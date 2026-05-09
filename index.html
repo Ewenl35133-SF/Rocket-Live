@@ -2,44 +2,96 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Console Spatiale</title>
+    <title>Station Relais Privée - Direct SpaceX</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
-        .monitor { width: 90%; max-width: 900px; margin: 20px auto; border: 2px solid #333; background: #050505; }
-        .btn-group { margin: 10px; }
-        button { padding: 10px; background: #222; color: #eee; border: 1px solid #444; cursor: pointer; margin: 5px; }
-        button:hover { background: #444; }
-        video { width: 100%; height: auto; }
+        body { background: #050505; color: #00d4ff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin: 0; padding: 20px; }
+        .terminal { border: 1px solid #00d4ff; padding: 20px; max-width: 900px; margin: auto; background: #000; border-radius: 10px; box-shadow: 0 0 20px rgba(0, 212, 255, 0.2); }
+        h1 { font-size: 1.5em; letter-spacing: 2px; }
+        .input-group { margin: 20px 0; }
+        input { width: 70%; padding: 12px; background: #111; border: 1px solid #333; color: #fff; border-radius: 5px; outline: none; }
+        input:focus { border-color: #00d4ff; }
+        button { padding: 12px 25px; background: #00d4ff; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; transition: 0.3s; }
+        button:hover { background: #fff; box-shadow: 0 0 10px #fff; }
+        #status { margin: 10px 0; font-family: monospace; font-size: 0.9em; color: #888; }
+        #video-container { margin-top: 20px; background: #000; aspect-ratio: 16/9; border: 1px solid #222; border-radius: 5px; overflow: hidden; }
+        video { width: 100%; height: 100%; display: block; }
     </style>
 </head>
 <body>
-    <h1>LIAISON DIRECTE (SANS YOUTUBE)</h1>
-    <div class="monitor">
-        <video id="video" controls autoplay></video>
-        <div class="btn-group">
-            <button onclick="loadStream('https://ntvpublic.akamaized.net/hls/live/2023153/ntv-public/master.m3u8')">FLUX NASA (DIRECT AKAMAI)</button>
-            <button onclick="loadStream('https://nasatv-uhd.akamaized.net/hls/live/2023155/uhd-prod/master.m3u8')">NASA 4K (DIRECT AKAMAI)</button>
+
+    <div class="terminal">
+        <h1>🛰️ RELAY STATION ALPHA</h1>
+        <div id="status">SYSTÈME PRÊT - EN ATTENTE DE SIGNAL</div>
+        
+        <div class="input-group">
+            <input type="text" id="ytUrl" placeholder="Collez le lien YouTube ici (ex: SpaceX Live)...">
+            <button onclick="connect()">ÉTABLIR LIAISON</button>
         </div>
+
+        <div id="video-container">
+            <video id="video" controls autoplay></video>
+        </div>
+        
+        <p style="font-size: 0.7em; color: #444; margin-top: 15px;">Tunnel privé via Cloudflare Workers</p>
     </div>
-    <p style="color: #666; font-size: 0.8em;">Note : Ces flux utilisent les serveurs de diffusion brute, sans interface Google.</p>
 
     <script>
-        var video = document.getElementById('video');
-        var hls = new Hls();
+        function connect() {
+            var url = document.getElementById('ytUrl').value;
+            var status = document.getElementById('status');
+            var videoId = "";
 
-        function loadStream(url) {
+            // Extraction de l'ID YouTube
+            if (url.includes('v=')) {
+                videoId = url.split('v=')[1].split('&')[0];
+            } else if (url.includes('youtu.be/')) {
+                videoId = url.split('/').pop().split('?')[0];
+            } else {
+                videoId = url; 
+            }
+
+            if (videoId.length !== 11) {
+                status.innerText = "❌ ERREUR : ID YOUTUBE INVALIDE";
+                status.style.color = "#ff4d4d";
+                return;
+            }
+
+            status.innerText = "📡 CONNEXION AU TUNNEL EN COURS...";
+            status.style.color = "#00d4ff";
+
+            // TON LIEN WORKER CLOUDFLARE
+            var myProxy = "https://snowy-dew-55eb.ewenl35133.workers.dev/?v=" + videoId;
+
+            var video = document.getElementById('video');
+            
             if (Hls.isSupported()) {
-                hls.destroy();
-                hls = new Hls();
-                hls.loadSource(url);
+                var hls = new Hls({
+                    // Paramètres pour aider à passer les réseaux lents/bloqués
+                    enableWorker: true,
+                    lowLatencyMode: true
+                });
+                hls.loadSource(myProxy);
                 hls.attachMedia(video);
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    status.innerText = "✅ LIAISON ÉTABLIE - FLUX EN COURS";
+                    status.style.color = "#00ff00";
+                    video.play();
+                });
+
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        status.innerText = "⚠️ ÉCHEC DE LIAISON (LE SERVEUR RELAIS EST PEUT-ÊTRE BLOQUÉ)";
+                        status.style.color = "#ff4d4d";
+                    }
+                });
+            } 
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = myProxy;
+                status.innerText = "✅ LIAISON ÉTABLIE (MODE NATIF)";
             }
         }
-        // Charger la NASA par défaut
-        loadStream('https://ntvpublic.akamaized.net/hls/live/2023153/ntv-public/master.m3u8');
     </script>
 </body>
 </html>
