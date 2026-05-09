@@ -2,27 +2,27 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Space Stream - Extracteur Automatique</title>
+    <title>Space Stream - Multi-Serveurs</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
         .container { max-width: 900px; margin: 20px auto; padding: 10px; }
         input { width: 80%; padding: 12px; border: 1px solid #444; background: #222; color: #fff; border-radius: 5px; margin-bottom: 10px; }
-        button { padding: 12px 30px; background: #e63946; color: white; border: none; cursor: pointer; border-radius: 5px; font-weight: bold; }
-        #video-container { margin-top: 20px; background: #111; min-height: 400px; border: 1px solid #333; }
+        button { padding: 12px 30px; background: #00d4ff; color: black; border: none; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        #video-container { margin-top: 20px; background: #111; min-height: 400px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; }
-        .status { color: #888; font-size: 0.9em; margin-top: 5px; }
+        #msg { color: #00d4ff; font-family: monospace; margin-top: 10px; min-height: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 Space Stream Direct</h1>
-        <p>Colle n'importe quel lien YouTube ci-dessous :</p>
+        <p>Colle le lien YouTube du live (ex: SpaceX, NASA) :</p>
         
         <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=...">
         <br>
-        <button onclick="processAndPlay()">DÉBLOQUER LE FLUX</button>
-        <p id="msg" class="status"></p>
+        <button onclick="processAndPlay()">DÉBLOQUER LE SIGNAL</button>
+        <div id="msg">Prêt.</div>
 
         <div id="video-container">
             <video id="video" controls autoplay></video>
@@ -31,35 +31,56 @@
 
     <script>
         function extractVideoId(url) {
-            // Cette expression régulière gère tous les formats de liens YouTube possibles
             var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
             var match = url.match(regExp);
             return (match && match[7].length == 11) ? match[7] : false;
         }
 
-        function processAndPlay() {
+        async function processAndPlay() {
             var input = document.getElementById('urlInput').value;
             var videoId = extractVideoId(input);
             var msg = document.getElementById('msg');
+            var video = document.getElementById('video');
             
-            if (videoId) {
-                msg.innerText = "ID détecté : " + videoId + " - Connexion au flux...";
-                
-                // On utilise la passerelle Piped (Cloudflare) pour transformer YT en flux vidéo brut
-                var streamUrl = "https://pipedapi.kavin.rocks/manifest/hls/" + videoId + ".m3u8";
-                
-                var video = document.getElementById('video');
-                if (Hls.isSupported()) {
-                    var hls = new Hls();
-                    hls.loadSource(streamUrl);
-                    hls.attachMedia(video);
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    video.src = streamUrl;
-                }
-            } else {
-                msg.innerText = "Erreur : Lien YouTube non reconnu.";
-                msg.style.color = "red";
+            if (!videoId) {
+                msg.innerText = "❌ Erreur : Lien non reconnu.";
+                return;
             }
+
+            const servers = [
+                "https://pipedapi.kavin.rocks",
+                "https://piped-api.lunar.icu",
+                "https://api.piped.victr.me",
+                "https://pipedapi.moomoo.me"
+            ];
+
+            for (let base of servers) {
+                msg.innerText = "📡 Tentative via : " + base.split('//')[1] + "...";
+                let streamUrl = `${base}/manifest/hls/${videoId}.m3u8`;
+                
+                try {
+                    // On teste si le flux répond en moins de 3 secondes
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000);
+                    
+                    let response = await fetch(streamUrl, { method: 'HEAD', signal: controller.signal });
+                    
+                    if (response.ok) {
+                        msg.innerText = "✅ SIGNAL ACQUIS ! (Serveur: " + base.split('//')[1] + ")";
+                        if (Hls.isSupported()) {
+                            var hls = new Hls();
+                            hls.loadSource(streamUrl);
+                            hls.attachMedia(video);
+                        } else {
+                            video.src = streamUrl;
+                        }
+                        return; 
+                    }
+                } catch (e) {
+                    console.log("Serveur suivant...");
+                }
+            }
+            msg.innerText = "❌ ÉCHEC : Tous les serveurs sont saturés ou bloqués.";
         }
     </script>
 </body>
