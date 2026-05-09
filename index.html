@@ -2,39 +2,46 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Moniteur de Lancement</title>
+    <title>Relais de Signal</title>
+    <!-- On utilise une version de HLS.js hébergée sur un CDN neutre -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; }
-        #ui { padding: 10px; background: #111; border-bottom: 1px solid #333; }
-        input { width: 60%; padding: 8px; background: #000; border: 1px solid #444; color: #fff; }
-        button { padding: 8px 20px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; }
-        #player-container { width: 100vw; height: calc(100vh - 60px); }
-        iframe { width: 100%; height: 100%; border: none; }
+        body { background: #000; color: #00ff00; font-family: monospace; text-align: center; }
+        #screen { width: 90%; max-width: 800px; aspect-ratio: 16/9; margin: 20px auto; background: #111; border: 1px solid #00ff00; }
+        input { width: 60%; padding: 10px; background: #000; border: 1px solid #00ff00; color: #00ff00; }
+        button { padding: 10px 20px; background: #00ff00; color: #000; border: none; cursor: pointer; font-weight: bold; }
+        video { width: 100%; height: 100%; }
     </style>
 </head>
 <body>
-    <div id="ui">
-        <input type="text" id="url" placeholder="Lien YouTube ici...">
-        <button onclick="play()">VOIR LE DIRECT</button>
-    </div>
-    <div id="player-container">
-        <div style="padding-top:15vh; color:#444;">Signal en attente de liaison...</div>
+    <h1>📟 LIAISON SATELLITE CHIFFRÉE</h1>
+    <p>Le flux est extrait via tunnel tiers pour contourner le blocage Chrome.</p>
+    
+    <input type="text" id="ytUrl" placeholder="Coller le lien du live ici...">
+    <button onclick="startTunnel()">DÉCRYPTER</button>
+
+    <div id="screen">
+        <video id="videoPlayer" controls autoplay></video>
     </div>
 
     <script>
-        function play() {
-            var val = document.getElementById('url').value;
+        function startTunnel() {
+            var url = document.getElementById('ytUrl').value;
             var id = "";
-            
-            // Nettoyage intelligent du lien
-            if(val.includes('v=')) { id = val.split('v=')[1].split('&')[0]; }
-            else if(val.includes('youtu.be/')) { id = val.split('/').pop().split('?')[0]; }
-            else { id = val; }
+            if(url.includes('v=')) id = url.split('v=')[1].split('&')[0];
+            else id = url.split('/').pop();
 
-            if(id.length === 11) {
-                // On utilise l'URL d'intégration la plus neutre possible
-                document.getElementById('player-container').innerHTML = 
-                    '<iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&modestbranding=1&rel=0" allow="autoplay; fullscreen"></iframe>';
+            // On utilise un proxy HLS qui ne mentionne JAMAIS youtube
+            // Ce serveur (Piped) télécharge pour toi et te renvoie les segments
+            var proxyStream = "https://piped-api.lunar.icu/manifest/hls/" + id + ".m3u8";
+
+            var video = document.getElementById('videoPlayer');
+            if (Hls.isSupported()) {
+                var hls = new Hls();
+                hls.loadSource(proxyStream);
+                hls.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = proxyStream;
             }
         }
     </script>
