@@ -2,48 +2,44 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Relais de Signal</title>
-    <!-- On utilise une version de HLS.js hébergée sur un CDN neutre -->
+    <title>Console Spatiale</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
     <style>
-        body { background: #000; color: #00ff00; font-family: monospace; text-align: center; }
-        #screen { width: 90%; max-width: 800px; aspect-ratio: 16/9; margin: 20px auto; background: #111; border: 1px solid #00ff00; }
-        input { width: 60%; padding: 10px; background: #000; border: 1px solid #00ff00; color: #00ff00; }
-        button { padding: 10px 20px; background: #00ff00; color: #000; border: none; cursor: pointer; font-weight: bold; }
-        video { width: 100%; height: 100%; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
+        .monitor { width: 90%; max-width: 900px; margin: 20px auto; border: 2px solid #333; background: #050505; }
+        .btn-group { margin: 10px; }
+        button { padding: 10px; background: #222; color: #eee; border: 1px solid #444; cursor: pointer; margin: 5px; }
+        button:hover { background: #444; }
+        video { width: 100%; height: auto; }
     </style>
 </head>
 <body>
-    <h1>📟 LIAISON SATELLITE CHIFFRÉE</h1>
-    <p>Le flux est extrait via tunnel tiers pour contourner le blocage Chrome.</p>
-    
-    <input type="text" id="ytUrl" placeholder="Coller le lien du live ici...">
-    <button onclick="startTunnel()">DÉCRYPTER</button>
-
-    <div id="screen">
-        <video id="videoPlayer" controls autoplay></video>
+    <h1>LIAISON DIRECTE (SANS YOUTUBE)</h1>
+    <div class="monitor">
+        <video id="video" controls autoplay></video>
+        <div class="btn-group">
+            <button onclick="loadStream('https://ntvpublic.akamaized.net/hls/live/2023153/ntv-public/master.m3u8')">FLUX NASA (DIRECT AKAMAI)</button>
+            <button onclick="loadStream('https://nasatv-uhd.akamaized.net/hls/live/2023155/uhd-prod/master.m3u8')">NASA 4K (DIRECT AKAMAI)</button>
+        </div>
     </div>
+    <p style="color: #666; font-size: 0.8em;">Note : Ces flux utilisent les serveurs de diffusion brute, sans interface Google.</p>
 
     <script>
-        function startTunnel() {
-            var url = document.getElementById('ytUrl').value;
-            var id = "";
-            if(url.includes('v=')) id = url.split('v=')[1].split('&')[0];
-            else id = url.split('/').pop();
+        var video = document.getElementById('video');
+        var hls = new Hls();
 
-            // On utilise un proxy HLS qui ne mentionne JAMAIS youtube
-            // Ce serveur (Piped) télécharge pour toi et te renvoie les segments
-            var proxyStream = "https://piped-api.lunar.icu/manifest/hls/" + id + ".m3u8";
-
-            var video = document.getElementById('videoPlayer');
+        function loadStream(url) {
             if (Hls.isSupported()) {
-                var hls = new Hls();
-                hls.loadSource(proxyStream);
+                hls.destroy();
+                hls = new Hls();
+                hls.loadSource(url);
                 hls.attachMedia(video);
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = proxyStream;
+                video.src = url;
             }
         }
+        // Charger la NASA par défaut
+        loadStream('https://ntvpublic.akamaized.net/hls/live/2023153/ntv-public/master.m3u8');
     </script>
 </body>
 </html>
