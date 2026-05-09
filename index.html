@@ -2,50 +2,47 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Space Stream - Mode Direct</title>
+    <title>Station Relais Spatiale</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; }
-        input { width: 70%; padding: 12px; border: 1px solid #333; background: #111; color: #fff; border-radius: 5px; }
-        button { padding: 12px 25px; background: #e63946; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
-        #player-area { margin-top: 20px; width: 100%; aspect-ratio: 16 / 9; background: #050505; border: 1px solid #222; position: relative; }
-        iframe { width: 100%; height: 100%; border: none; }
-        .info { color: #555; font-size: 0.8em; margin-top: 10px; }
+        body { background: #0b0d17; color: #4cc9f0; font-family: monospace; text-align: center; padding: 20px; }
+        .box { border: 1px solid #4cc9f0; padding: 20px; max-width: 900px; margin: auto; background: #000; box-shadow: 0 0 15px #4cc9f0; }
+        input { width: 70%; padding: 10px; background: #111; border: 1px solid #4cc9f0; color: #fff; margin-bottom: 10px; }
+        button { padding: 10px 20px; background: #4cc9f0; color: #000; border: none; cursor: pointer; font-weight: bold; }
+        #video-container { margin-top: 20px; background: #000; aspect-ratio: 16/9; border: 1px solid #333; }
+        video { width: 100%; height: 100%; }
+        .status { font-size: 0.8em; margin-top: 10px; color: #777; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🚀 Space Launch Monitor</h1>
-        <input type="text" id="ytUrl" placeholder="Colle le lien YouTube ici...">
-        <button onclick="launchStream()">LANCER</button>
-        
-        <div id="player-area">
-            <div style="padding-top: 20%; color: #333;">Signal en attente...</div>
+    <div class="box">
+        <h1>📡 RELAY STATION ALPHA</h1>
+        <input type="text" id="target" placeholder="Entrez le code source du signal...">
+        <button onclick="connect()">ÉTABLIR LA LIAISON</button>
+        <div id="video-container">
+            <video id="remoteVideo" controls autoplay></video>
         </div>
-        
-        <p class="info">Utilise le domaine sécurisé youtube-nocookie pour éviter les blocages.</p>
+        <p class="status">Statut : En attente d'encodage HLS propriétaire.</p>
     </div>
 
     <script>
-        function launchStream() {
-            var url = document.getElementById('ytUrl').value;
-            var videoId = "";
+        function connect() {
+            var raw = document.getElementById('target').value;
+            // Extraction de l'ID si c'est une URL complète
+            var id = raw.includes('v=') ? raw.split('v=')[1].split('&')[0] : (raw.includes('be/') ? raw.split('be/')[1] : raw);
             
-            // Extraction rapide de l'ID
-            if (url.includes('v=')) {
-                videoId = url.split('v=')[1].split('&')[0];
-            } else if (url.includes('youtu.be/')) {
-                videoId = url.split('/').pop();
-            } else {
-                videoId = url; // Si l'utilisateur met juste l'ID
-            }
+            // PASSERELLE DE CAMOUFLAGE
+            // On utilise un proxy de flux qui ne contient pas le mot "YouTube" dans l'URL
+            var streamUrl = "https://inv.n8pjl.ca/api/v1/manifest/hls/" + id + ".m3u8";
 
-            if (videoId.length === 11) {
-                var area = document.getElementById('player-area');
-                // On injecte l'iframe avec des paramètres qui cachent le maximum de trucs YouTube
-                area.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + videoId + '?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>';
-            } else {
-                alert("ID YouTube invalide !");
+            var video = document.getElementById('remoteVideo');
+            if (Hls.isSupported()) {
+                var hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = streamUrl;
             }
         }
     </script>
