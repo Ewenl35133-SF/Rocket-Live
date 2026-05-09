@@ -1,58 +1,57 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>My Space Launch Center</title>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<style>
-
-body { background: #000; color: white; font-family: sans-serif; text-
-align: center; }
-
-#video-container { width: 80%; margin: auto; background: #111; }
-video { width: 100%; border: 2px solid #444; }
-.launch-list { margin-top: 20px; display: flex; flex-direction: column;
-align-items: center; }
-
-.mission-card { background: #222; padding: 15px; margin: 10px; border-
-radius: 8px; width: 60%; }
-
-</style>
+    <meta charset="UTF-8">
+    <title>Mon Espace Live - Lecteur Direct</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { background: #0b0d17; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .box { background: #1a1c2c; padding: 20px; border-radius: 15px; max-width: 900px; margin: auto; border: 1px solid #444; }
+        input { width: 70%; padding: 10px; border-radius: 5px; border: none; margin-bottom: 10px; }
+        button { padding: 10px 20px; border-radius: 5px; border: none; background: #4cc9f0; color: #000; font-weight: bold; cursor: pointer; }
+        #video-container { margin-top: 20px; background: #000; line-height: 0; }
+        video { width: 100%; border: 1px solid #444; }
+    </style>
 </head>
 <body>
-<h1>Direct Spatial</h1>
-<div id="video-container">
-<video id="video" controls autoplay></video>
-</div>
-<div class="launch-list" id="launches">
-<!-- Les données de l'API s'afficheront ici -->
-</div>
-<script>
-// 1. Gestion du flux Vidéo
-var video = document.getElementById('video');
-var videoSrc = 'https://ntvpublic.akamaized.net/hls/live/2023153/ntv-
+    <div class="box">
+        <h1>🚀 Space Stream Direct</h1>
+        <p>Collez le lien du live YouTube (ex: de Next Spaceflight) ici :</p>
+        
+        <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=...">
+        <button onclick="playVideo()">Lancer le Live</button>
 
-public/master.m3u8'; // NASA TV Public
-if (Hls.isSupported()) {
-var hls = new Hls();
-hls.loadSource(videoSrc);
-hls.attachMedia(video);
-} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-video.src = videoSrc;
-}
-// 2. Récupération des données (API)
-fetch('https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=5')
-.then(response => response.json())
-.then(data => {
-const container = document.getElementById('launches');
-data.results.forEach(launch => {
-const card = document.createElement('div');
-card.className = 'mission-card';
-card.innerHTML = `<h3>${launch.name}</h3><p>Date : ${new
-Date(launch.net).toLocaleString()}</p>`;
-container.appendChild(card);
-});
-});
-</script>
+        <div id="video-container">
+            <video id="video" controls autoplay></video>
+        </div>
+    </div>
+
+    <script>
+        var video = document.getElementById('video');
+        var hls = new Hls();
+
+        function playVideo() {
+            var rawUrl = document.getElementById('urlInput').value;
+            if (!rawUrl) return;
+
+            // Extraction de l'ID YouTube
+            var videoId = rawUrl.split('v=')[1] || rawUrl.split('/').pop();
+            
+            // UTILISATION D'UN MOTEUR DE CONVERSION AUTOMATIQUE
+            // Ce lien transforme l'ID YouTube en flux vidéo pur (m3u8)
+            var streamUrl = "https://vid.priv.au/api/v1/manifest/" + videoId;
+
+            if (Hls.isSupported()) {
+                hls.destroy(); // On nettoie l'ancien flux
+                hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = streamUrl;
+                video.play();
+            }
+        }
+    </script>
 </body>
 </html>
